@@ -1,0 +1,33 @@
+{
+  "name": "@ceicc/range",
+  "version": "1.0.0",
+  "description": "http range request handler",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon test/server.js",
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ceicc/range.git"
+  },
+  "keywords": [
+    "range",
+    "range-header",
+    "partition"
+  ],
+  "author": "Husam Ahmed",
+  "license": "MIT",
+  "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "bugs": {
+    "url": "https://github.com/ceicc/range/issues",
+    "email": "husam999h@gmail.com"
+  },
+  "homepage": "https://github.com/ceicc/range#readme",
+  "dependencies": {
+    "mime-types": "^2.1.32"
+  }
+}
