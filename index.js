@@ -23,6 +23,8 @@ async function range(path, range, res, cb) {
       if (err.code === "ENOENT") {
         const e = new Error("File Not Found");
         e.code = 404;
+        e.path = path;
+        e.range = range;
         cb(e);
         return false;
       }
@@ -49,14 +51,16 @@ async function range(path, range, res, cb) {
 
   let [start, end] = range.split("=")[1].split(",")[0].split("-");
 
+  [start, end] = [Number(start), Number(end)];
+
   switch (true) {
 
-    case Boolean(start) && !end: // Range: <unit>=<range-start>-
+    case !!start && !end: // Range: <unit>=<range-start>-
       end = size - 1;
       start = Number(start);
       break;
 
-    case !start && Boolean(end): // Range: <unit>=-<suffix-length>
+    case !start && !!end: // Range: <unit>=-<suffix-length>
       start = size - end;
       end = size - 1;
       break;
@@ -65,16 +69,14 @@ async function range(path, range, res, cb) {
       start = 0;
       end = size - 1;
       break;
-
-    default: // Range: <unit>=<range-start>-<range-end>
-      start = Number(start);
-      end = Number(end);
   }
 
   if (start > end || end >= size) {
     // Range out of order or bigger than file size
     const e = new Error("Range Not Satisfiable");
     e.code = 416;
+    e.path = path;
+    e.range = range;
     cb(e);
     return;
   }
@@ -97,7 +99,7 @@ async function range(path, range, res, cb) {
  * @returns {void}
  */
 function streamFinish(err, cb) {
-  // Report all errors except "Stram close" because it's normal
+  // Report all errors except "Stream closed" because it's normal
   if (err && err?.code !== "ERR_STREAM_PREMATURE_CLOSE") {
     cb(err);
     return;
