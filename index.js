@@ -30,10 +30,12 @@ fs = require("fs"),
  * @param {string} path path to file, `req.url`
  * @param {object} res http.ServerResponse object `res`
  * @param {options} options optional 
- * @returns {number} a promise with the used status code
+ * @returns {Promise<number>} A Promise with the response status code
  */
 const range = async (path, res, options) => new Promise(async (resolve, rejects) => {
 
+  if (typeof path !== "string") return rejects(new Error("path argument is required!"));
+  if (typeof res !== "object") return rejects(new Error("res object is required!"));
   if ((options?.conditional || options?.range) && !options?.headers) return rejects(new Error("headers object is required!"));
 
   const stat = await fs.promises.stat(path).catch(err => {
