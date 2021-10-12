@@ -22,6 +22,14 @@ fs = require("fs"),
  * @property {number} [maxAge] max age of caching in seconds - default 0
  * @property {boolean} [etag] add Etag header - default true
  * @property {boolean} [lastModified] add last-modified header - default true
+ * @property {string|boolean} [notFound] a handler for non existing files
+ * 
+ * `notFound: false` a rejection will be thrown (default).
+ * 
+ * `notFound: true` empty body with response code '404' will be sent.
+ * 
+ * `notFound: <string>` send a file with response code '404', the given string is the path to file.  
+ *    if the path doesn't led to a file, a rejection will be thrown
  */
 
 
@@ -41,6 +49,21 @@ const range = async (path, res, options) => new Promise(async (resolve, rejects)
   const stat = await fs.promises.stat(path).catch(err => {
     
     if (err.code === "ENOENT") {
+
+      if (options?.notFound === true) {
+        res.statusCode = 404;
+        res.end();
+        resolve(404);
+        return false;
+      }
+
+      if (typeof options?.notFound === "string") {
+        range(options.notFound, res, {
+          ...options,
+          notFound: false
+        }).then(resolve).catch(rejects);
+        return false;
+      }
 
       const e = new Error("File Not Found");
       e.code = 404;
