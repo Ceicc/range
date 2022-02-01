@@ -30,6 +30,11 @@ fs = require("fs"),
  * 
  * `notFound: <string>` send a file with response code '404', the given string is the path to file.  
  *    if the path doesn't led to a file, a rejection will be thrown
+ * @property {boolean|Array<string>} [implicitIndex=false] Check for index files if the request path is a directory. default: `false`
+ * 
+ * Pass an array of extensions to check against. e.g. _`["html", "css"]`_
+ * 
+ * Or simply pass `true` to check for html extension only
  */
 
 
@@ -79,6 +84,41 @@ const range = async (path, res, options) => new Promise(async (resolve, rejects)
   
   if (!stat) return;
 
+  if (stat.isDirectory()) {
+
+    if (!options?.implicitIndex)
+      return resolve(forgetAboutIt(res, 404))
+
+    const extensions = new Set()
+
+    if (Array.isArray(options.implicitIndex))
+      options.implicitIndex.forEach(v => extensions.add(v))
+    else if (options.implicitIndex === true)
+      extensions.add("html")
+
+    let resolved = false
+
+    for (const extension of extensions) {
+
+      if (resolved) break
+
+      await fs.promises.stat(`${path}/index.${extension}`)
+        .then(s => {
+          if (!s.isFile())
+            return
+          resolved = true
+          range(`${path}/index.${extension}`, res, { ...options }).then(resolve).catch(rejects)
+        })
+        .catch(err => {
+          if (err.code === "ENOENT") // File not found, that's normal because we're looping through random strings
+            return                   // Other errors will be sent through a reject
+          resolved = true
+          rejects(err)
+        })
+    }
+
+    return resolved ? null : resolve(forgetAboutIt(res, 404))
+  }
   
   const
   headers = options?.headers,
