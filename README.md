@@ -36,10 +36,10 @@ Then make a simple server that responds with a file based on the requested path
  3. `lastModified` add last-modified header - default true
  
  4. `conditional` whether to respect conditional requests or not - default false  
-   if true, the headers object is required
+   if true, the headers object is required.
  
  5. `range` accept range request - default false  
-   if true, the headers object is required
+   if true, the headers object is required.
  
  6. `headers` the request headers object `req.headers`  
    if `range` and/or `conditionalRequest` are true, then the headers object is required.  
@@ -49,7 +49,11 @@ Then make a simple server that responds with a file based on the requested path
    `notFound: false` - a rejection will be thrown (default).  
    `notFound: true` - empty body with response code '404' will be sent.  
    `notFound: <string>` - send a file with response code '404', the given string is the path to file.  
-      if the path doesn't led to a file, a rejection will be thrown
+      if the path doesn't led to a file, a rejection will be thrown.
+  
+  8. `implicitIndex` Check for index files if the request path is a directory. default: `false`  
+    Pass an array of extensions to check against. e.g. _`["html", "css"]`_  
+    Or simply pass `true` to check for html extension only.
 
  # Resolves
  the response status code
