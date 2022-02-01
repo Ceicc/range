@@ -137,7 +137,7 @@ function streamIt(path, res, resolve, rejects, opts) {
 }
 
 function getEtag(mtime, size) {
-  return `W/"${size.toString(36)}-${mtime.getTime().toString(36)}"`;
+  return `W/"${size.toString(16)}-${mtime.getTime().toString(16)}"`;
 }
 
 function forgetAboutIt(res, status) {
