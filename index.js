@@ -98,23 +98,15 @@ const range = async (path, res, options) => new Promise(async (resolve, rejects)
 
     let resolved = false
 
+    const directory = await fs.promises.readdir(path)
+
     for (const extension of extensions) {
+      if (!directory.includes(`index.${extension}`))
+        continue
 
-      if (resolved) break
-
-      await fs.promises.stat(`${path}/index.${extension}`)
-        .then(s => {
-          if (!s.isFile())
-            return
-          resolved = true
-          range(`${path}/index.${extension}`, res, { ...options }).then(resolve).catch(rejects)
-        })
-        .catch(err => {
-          if (err.code === "ENOENT") // File not found, that's normal because we're looping through random strings
-            return                   // Other errors will be sent through a reject
-          resolved = true
-          rejects(err)
-        })
+      await range(`${path}/index.${extension}`, res, { ...options }).then(resolve).catch(rejects)
+      resolved = true
+      break
     }
 
     return resolved ? null : resolve(forgetAboutIt(res, 404))
