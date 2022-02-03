@@ -1,8 +1,14 @@
 const
 fs = require("fs"),
-{ pipeline } = require("stream"),
-{ contentType } = require("mime-types");
+{ pipeline } = require("stream/promises"),
+{ contentType } = require("mime-types"),
+optionsChecker = require("@ceicc/options-checker"),
+{ URL } = require("url"),
+{ ClientRequest, ServerResponse } = require("http")
 
+module.exports = range
+
+const nextTick = () => new Promise(r => process.nextTick(r))
 
 /**
  * @typedef {object} options
@@ -45,99 +51,119 @@ fs = require("fs"),
  * @param {options} options optional 
  * @returns {Promise<number>} A Promise with the response status code
  */
-const range = async (path, res, options) => new Promise(async (resolve, rejects) => {
+function range (options) {
 
-  if (typeof path !== "string") return rejects(new Error("path argument is required!"));
-  if (typeof res !== "object") return rejects(new Error("res object is required!"));
-  if ((options?.conditional || options?.range) && !options?.headers) return rejects(new Error("headers object is required!"));
+  optionsChecker(options, {
+    conditional:    { default: true,  type: "boolean" },
+    range:          { default: true,  type: "boolean" },
+    maxAge:         { default: 10800, type: "number"  },
+    etag:           { default: true,  type: "boolean" },
+    lastModified:   { default: true,  type: "boolean" },
+    notFound:       { default: true,  type: "boolean|string" },
+    implicitIndex:  { default: true,  type: "array|boolean"  },
+  })
 
-  const stat = await fs.promises.stat(path).catch(err => {
-    
-    if (err.code === "ENOENT") {
 
-      if (options?.notFound === true) {
-        res.statusCode = 404;
-        res.end();
-        resolve(404);
-        return false;
-      }
+  return async function rangeMiddleware(req, res) {
 
-      if (typeof options?.notFound === "string") {
-        range(options.notFound, res, {
-          ...options,
-          notFound: false
-        }).then(resolve).catch(rejects);
-        return false;
-      }
-
-      const e = new Error("File Not Found");
-      e.code = 404;
-      e.path = path;
-      rejects(e);
-      return false;
-
+    if (!(req instanceof ClientRequest)) {
+      await nextTick()
+      throw new TypeError("Request object is not instance of ClientRequest")
+    }
+    if (!(res instanceof ServerResponse)) {
+      await nextTick()
+      throw new TypeError("Response object is not instance of ServerResponse")
     }
 
-    rejects(err);
-    return false;
-  });
+    req.pathname = new URL(`https://example.com${req.url}`).pathname
+
+    try {
   
-  if (!stat) return;
+      var stat = await fs.promises.stat(req.pathname)
+  
+    } catch (error) {
+      
+      if (error.code === "ENOENT") {
+  
+        if (options.notFound) {
+          res.statusCode = 404
+          res.end()
+          return 404
+        }
+  
+        if (typeof options.notFound === "string") {
 
-  if (stat.isDirectory()) {
+          req.url = options.notFound
 
-    if (!options?.implicitIndex)
-      return resolve(forgetAboutIt(res, 404))
+          options.notFound = false
 
-    const extensions = new Set()
+          return await rangeMiddleware(req, res)
+        }
+  
+        const e = new Error("File Not Found")
+        e.code = 404
+        e.path = path
+        throw e
 
-    if (Array.isArray(options.implicitIndex))
-      options.implicitIndex.forEach(v => extensions.add(v))
-    else if (options.implicitIndex === true)
-      extensions.add("html")
+      }
 
-    let resolved = false
-
-    const directory = await fs.promises.readdir(path)
-
-    for (const extension of extensions) {
-      if (!directory.includes(`index.${extension}`))
-        continue
-
-      await range(`${path}/index.${extension}`, res, { ...options }).then(resolve).catch(rejects)
-      resolved = true
-      break
+      throw error
     }
 
-    return resolved ? null : resolve(forgetAboutIt(res, 404))
+    if (stat.isDirectory()) {
+  
+      if (!options.implicitIndex)
+        return forgetAboutIt(res, 404)
+  
+      const extensions = new Set()
+  
+      if (Array.isArray(options.implicitIndex))
+        options.implicitIndex.forEach(v => extensions.add(v))
+      else if (options.implicitIndex === true)
+        extensions.add("html")
+  
+      const directory = await fs.promises.readdir(req.pathname)
+  
+      for (const extension of extensions) {
+        if (!directory.includes(`index.${extension}`))
+          continue
+
+        req.url = `${req.pathname}/index.${extension}`
+  
+        return await rangeMiddleware(req, res)
+      }
+  
+      return forgetAboutIt(res, 404)
+    }
+
   }
   
+  
   const
-  headers = options?.headers,
-  accRange = options?.range === true,
-  conditional = options?.conditional ===  true,
-  maxAge = typeof options?.maxAge === 'number' ? options?.maxAge : 0,
-  etag = options?.etag === false ? false : getEtag(stat.mtime, stat.size),
-  lastMod = options?.lastModified === false ? false : new Date(stat.mtime).toUTCString();
+  etag = options.etag && getEtag(stat.mtime, stat.size),
+  lastMod = options.lastModified && new Date(stat.mtime).toUTCString()
 
 
-  etag && res.setHeader("etag", etag);
-  lastMod && res.setHeader("last-modified", lastMod);
-  maxAge && res.setHeader("cache-control", `max-age=${maxAge}`);
-  accRange && res.setHeader("accept-ranges", "bytes"); // Hint to the browser range is supported
+  etag && res.setHeader("etag", etag)
+  lastMod && res.setHeader("last-modified", lastMod)
+  options.maxAge && res.setHeader("cache-control", `max-age=${options.maxAge}`)
+  options.range && res.setHeader("accept-ranges", "bytes") // Hint to the browser range is supported
 
-  res.setHeader("content-type", contentType(path.split(".").pop()));
-  res.setHeader("content-length", stat.size);
+  res.setHeader("content-type", contentType(req.pathname.split(".").pop()))
+  res.setHeader("content-length", stat.size)
 
   // check conditional request, calclute a diff up to 2 sec because browsers sends seconds and javascript uses milliseconds
-  if (conditional && (headers["if-none-match"] === etag || (Date.parse(headers["if-modified-since"]) - stat.mtime.getTime()) >= -2000))
-    return resolve(forgetAboutIt(res, 304));
+  if ( options.conditional && (
+    req.headers["if-none-match"] === etag ||
+    ( Date.parse(req.headers["if-modified-since"]) - stat.mtime.getTime() ) >= -2000 )
+  )
+    return forgetAboutIt(res, 304)
 
-  if (accRange && headers["range"]) {
+  if (options.range && req.headers["range"]) {
     
-    if (headers["if-range"] && headers["if-range"] !== etag) {
+    if (req.headers["if-range"] && req.headers["if-range"] !== etag) {
       res.statusCode = 200;
-      streamIt(path, res, resolve, rejects);
+      streamIt(path, res, resolve, rejects)
       return;
     }
 
@@ -151,9 +177,7 @@ const range = async (path, res, options) => new Promise(async (resolve, rejects)
   streamIt(path, res, resolve, rejects);
   return;
 
-});
-
-module.exports = range;
+}
 
 
 function streamIt(path, res, resolve, rejects, opts) {
