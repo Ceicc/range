@@ -29,6 +29,7 @@
   },
   "homepage": "https://github.com/ceicc/range#readme",
   "dependencies": {
+    "@ceicc/options-checker": "^1.0.2",
     "mime-types": "^2.1.32"
   }
 }
