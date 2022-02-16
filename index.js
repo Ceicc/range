@@ -13,43 +13,44 @@ pipelinePromised = promisify(pipeline),
 
 nextTick = () => new Promise(r => process.nextTick(r))
 
+
 module.exports = range
 
 
 /**
  * @typedef {object} options
- * @property {object} [headers] the request headers object `req.headers`
  *
- * if `range` and/or `conditionalRequest` are true,
- * then the headers object is required.
+ * @property {number}   [maxAge] caching period in seconds - default `10800` (3 hours)
  *
- * you can pass the whole headers object, or only the conditional and range headers
+ * @property {boolean}  [etag] add Etag header - default `true`
  *
- * @property {boolean} [conditional] whether to respect conditional requests or not - default false
+ * @property {boolean}  [lastModified] add `last-modified` header - default `true`
  *
- * if true, the headers object is required
- * @property {boolean} [range] accept range request - default false
+ * @property {boolean}  [conditional] whether to respect conditional requests or not - default `true`
  *
- * if true, the headers object is required
- * @property {number} [maxAge] max age of caching in seconds - default 0
- * @property {boolean} [etag] add Etag header - default true
- * @property {boolean} [lastModified] add last-modified header - default true
+ * @property {boolean}  [range] accept range requests - default `true`
+ *
  * @property {string|boolean} [notFound] a handler for non existing files
  *
- * `notFound: false` a rejection will be thrown (default).
+ * `notFound: false` `next` will be called.
  *
- * `notFound: true` empty body with response code '404' will be sent.
+ * `notFound: true` empty body with response code '404' will be sent (default).
  *
  * `notFound: <string>` send a file with response code '404', the given string is the path to file.
- *    if the path doesn't led to a file, a rejection will be thrown
- *    *Note:* The path is relative to the `baseDir` path
- * @property {boolean|Array<string>} [implicitIndex=false] Check for index files if the request path is a directory. default: `false`
  *
- * Pass an array of extensions to check against. e.g. _`["html", "css"]`_
+ *    if the path doesn't led to a file, `next` will be called.
  *
- * Or simply pass `true` to check for html extension only
- * @property {string} [baseDir='.'] the base dirctory
- * @property {boolean} [handleErrors=false] Whether to internaly handle unknown errors, or pass it to `next` function
+ *    ***Note:*** The path is relative to the `baseDir` path.
+ *
+ * @property {boolean|Array<string>} [implicitIndex] Check for index files if the request path is a directory - default: `true`
+ *
+ *    Pass an array of extensions to check against. e.g. _`["html", "css"]`_
+ *
+ *    Or simply pass `true` to check for html extension only
+ *
+ * @property {string} [baseDir] the base dirctory - default: `'.'`
+ *
+ * @property {boolean} [hushErrors] Whether to ignore errors and reply with status code `500`, or pass the error to `next` function - default: `false`
  */
 
 
@@ -57,11 +58,12 @@ module.exports = range
  * @param {options} [options] configuration object
  * @returns {Function} Middleware function
  */
+
 function range(options = {}) {
 
   optionsChecker(options, {
     baseDir:        { default: '.',   type: "string"  },
-    handleErrors:   { default: false, type: "boolean" },
+    hushErrors:   { default: false, type: "boolean" },
     conditional:    { default: true,  type: "boolean" },
     range:          { default: true,  type: "boolean" },
     maxAge:         { default: 10800, type: "number"  },
@@ -75,13 +77,13 @@ function range(options = {}) {
   return async function rangeMiddleware(req, res, next = console.error) {
 
     if (!(req instanceof IncomingMessage)) {
-      await nextTick()
-      throw new TypeError("Request object is not instance of ClientRequest")
+      await nextTick()  // To make it truly asynchronous
+      next(TypeError("Request object is not an instance of IncomingMessage"))
     }
 
     if (!(res instanceof ServerResponse)) {
-      await nextTick()
-      throw new TypeError("Response object is not instance of ServerResponse")
+      await nextTick()  // To make it truly asynchronous
+      next(TypeError("Response object is not an instance of ServerResponse"))
     }
 
 
@@ -105,13 +107,13 @@ function range(options = {}) {
 
           options.notFound = false
 
-          return await rangeMiddleware(req, res, next)
+          return rangeMiddleware(req, res, next)
         }
 
-        return options.handleErrors ? forgetAboutIt(res, 404) : next(error)
+        return options.hushErrors ? forgetAboutIt(res, 404) : next(error)
       }
 
-      return options.handleErrors ? forgetAboutIt(res, 500) : next(error)
+      return options.hushErrors ? forgetAboutIt(res, 500) : next(error)
     }
 
 
@@ -136,21 +138,19 @@ function range(options = {}) {
 
         req.url = `${req.pathname}/index.${extension}`
 
-        return await rangeMiddleware(req, res, next)
+        return rangeMiddleware(req, res, next)
       }
 
       return forgetAboutIt(res, 404)
     }
 
 
-    const
-    etag = options.etag && getEtag(stat.mtime, stat.size),
-    lastMod = options.lastModified && new Date(stat.mtime).toUTCString()
+    const etag = options.etag && getEtag(stat.mtime, stat.size)
 
-    etag && res.setHeader("etag", etag)
-    lastMod && res.setHeader("last-modified", lastMod)
-    options.maxAge && res.setHeader("cache-control", `max-age=${options.maxAge}`)
-    options.range && res.setHeader("accept-ranges", "bytes") // Hint to the browser range is supported
+    etag                  && res.setHeader("etag", etag)
+    options.lastModified  && res.setHeader("last-modified", stat.mtime.toUTCString())
+    options.maxAge        && res.setHeader("cache-control", `max-age=${options.maxAge}`)
+    options.range         && res.setHeader("accept-ranges", "bytes") // Hint to the browser range is supported
 
     res.setHeader("content-type", contentType(req.pathname.split(".").pop()))
     res.setHeader("content-length", stat.size)
@@ -175,14 +175,14 @@ function range(options = {}) {
         try {
 
           await streamIt(options.baseDir + req.pathname, res)
-          return 200
 
         } catch (error) {
 
-          return options.handleErrors ? 500 : next(error)
+          options.hushErrors ? hush(res) : next(error)
 
         }
 
+        return
       }
 
       if (
@@ -194,28 +194,39 @@ function range(options = {}) {
 
       try {
 
-        await rangeRequest(options.baseDir + req.pathname, res, headers["range"], stat.size)
-        return
+        await rangeRequest(options.baseDir + req.pathname, res, req.headers["range"], stat.size)
 
       } catch (error) {
 
-        return options.handleErrors && next(error)
+        options.hushErrors ? hush(res) : next(error)
 
       }
 
+      return
     }
 
     res.statusCode = 200
 
     try {
+
       await streamIt(options.baseDir + req.pathname, res)
+
     } catch (error) {
-      options.handleErrors && next(error)
+
+      options.hushErrors ? hush(res) : next(error)
+
     }
 
   }
 }
 
+
+function hush(res) {
+  if (!res.headersSent) {
+    res.statusCode = 500
+    res.end()
+  }
+}
 
 async function streamIt(path, res, opts) {
   return pipelinePromised(
@@ -223,7 +234,7 @@ async function streamIt(path, res, opts) {
     res,
   ).catch(async (err) => {
       if (!err || err.code === "ERR_STREAM_PREMATURE_CLOSE") // Stream closed (normal)
-        return res.statusCode
+        return
       else
         throw err
     })
@@ -239,7 +250,6 @@ function forgetAboutIt(res, status) {
   res.removeHeader("cache-control");
   res.statusCode = status;
   res.end();
-  return status;
 }
 
 function rangeRequest(path, res, range, size) {
