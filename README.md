@@ -1,92 +1,123 @@
 # range
-static files request handler
+A static files middleware
 
-# Installation
+## Installation
 ```
-npm i @ceicc/range
+npm i @ceicc/range@3.0.0-beta.1
 ```
 
-# Usage
-start by importing `http` and `range`
+## Usage
+
+add `range` to an existence express app
+
 ```js
-const
-http = require("http"),
-range = require("@ceicc/range");
+import range from "@ceicc/range"
+
+// CommonJS
+// const range = require("@ceicc/range")
+
+app.get('/public/*', range())
+
+app.listen(3000)
 ```
+This will server every request starts with `/public/` with `range`.
 
-Then make a simple server that responds with a file based on the requested path
- ```js
- http.createServer((req, res) => {
+The base directory will be `.` or the current working directory, unless specified in the `options` object.
 
-  range(__dirname + req.url, res).catch(console.error)
+## Options Object
 
-}).listen(2000);
- ```
- 
- # Parameters
- 1. file path.
- 2. the response object.
- 3. optional object
+#### `maxAge`
 
- # Options Object
- 1. `maxAge` max age of caching in seconds - default 0
- 
- 2. `etag` add Etag header - default true
- 
- 3. `lastModified` add last-modified header - default true
- 
- 4. `conditional` whether to respect conditional requests or not - default false  
-   if true, the headers object is required.
- 
- 5. `range` accept range request - default false  
-   if true, the headers object is required.
- 
- 6. `headers` the request headers object `req.headers`  
-   if `range` and/or `conditionalRequest` are true, then the headers object is required.  
-   you can pass the whole headers object, or only the conditional and range headers.
+  - default: `10800`
+  - type: `number`
 
- 7. `notFound` handler for non existing files  
-   `notFound: false` - a rejection will be thrown (default).  
-   `notFound: true` - empty body with response code '404' will be sent.  
-   `notFound: <string>` - send a file with response code '404', the given string is the path to file.  
-      if the path doesn't led to a file, a rejection will be thrown.
-  
-  8. `implicitIndex` Check for index files if the request path is a directory. default: `false`  
-    Pass an array of extensions to check against. e.g. _`["html", "css"]`_  
-    Or simply pass `true` to check for html extension only.
+  caching period in seconds.
 
- # Resolves
- the response status code
- 
- # Rejects
- 'File Not Found' error.
- 
- Any other unexpected error
- 
- # Real World Example
- ```js
-const
-express = require("express"),
-range = require("@ceicc/range"),
-app = express();
+#### `etag`
 
-app.get('/', (req, res, next) => range('./public/index.html', res).catch(next));
+  - default: `true`
+  - type: `boolean`
 
-app.get('/public/*', (req, res, next) => {
-  range('.' + req.path, res, {
-    headers: req.headers,
-    range: true,
-    conditional: true,
-    maxAge: 2592000, // 30 Days
-    notFound: './test/public/404.html',
-  }).catch(next);
-});
+  add Etag header.
 
-app.use((err, req, res, next) => {
-  console.dir(err);
-  if (!res.headersSent)
-    res.sendStatus(500);
-});
+#### `lastModified`
 
-app.listen(2000);
- ```
+  - default: `true`
+  - type: `boolean`
+
+  add last-modified header.
+
+#### `conditional`
+
+  - default: `true`
+  - type: `boolean`
+
+  whether to respect conditional requests or not.
+
+#### `range`
+
+  - default: `true`
+  - type: `boolean`
+
+  accept range request.
+
+#### `notFound`
+
+  - default: `true`
+  - type: `boolean|string`
+
+  a handler for non existing files
+
+  `notFound: false` `next` will be called.
+
+  `notFound: true` empty body with status code '404' will be sent.
+
+  `notFound: <string>` send a file with status code '404', the given string is the path to file.
+
+  if the path doesn't led to a file, `next` will be called.
+
+  ***Note:*** The path is relative to the `baseDir` path.
+
+#### `implicitIndex`
+
+  - default: `true`
+  - type: `boolean|Array<string>`
+
+  Check for index files if the request path is a directory.
+
+  Pass an array of extensions to check against. e.g. _`["html", "css"]`_
+
+  Or simply pass `true` to check for html extension only.
+
+#### `baseDir`
+
+  - default: `'.'`
+  - type: `string`
+
+  the base dirctory.
+
+#### `hushErrors`
+
+  - default: `false`
+  - type: `boolean`
+
+  Whether to ignore errors and reply with status code `500`, or pass the error to `next` function.
+
+
+## Real World Example
+
+```js
+import express from "express"
+import range from "@ceicc/range"
+
+const app = express()
+
+app.get('*', range({ baseDir: './public/' }))
+
+app.use((error, req, res, next) => {
+  console.error(error)
+  res.sendStatus(500)
+})
+
+app.listen(80, () => console.log("server listening on localhost"))
+```
