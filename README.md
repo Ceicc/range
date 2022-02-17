@@ -20,7 +20,7 @@ app.get('/public/*', range())
 
 app.listen(3000)
 ```
-This will server every request starts with `/public/` with `range`.
+This will serve every request starts with `/public/` with `range`.
 
 The base directory will be `.` or the current working directory, unless specified in the `options` object.
 
