@@ -103,6 +103,17 @@ The base directory will be `.` or the current working directory, unless specifie
 
   Whether to ignore errors and reply with status code `500`, or pass the error to `next` function.
 
+#### `trailingSlash`
+
+  - default: `true`
+  - type: `boolean`
+
+  Redirect directory requests to add trailing slash - default `true`
+
+  disabling this option will led to relative path issues. [see #9](https://github.com/Ceicc/range/issues/9)
+
+  `implicitIndex` must be `true`
+
 
 ## Real World Example
 
