@@ -51,6 +51,12 @@ module.exports = range
  * @property {string} [baseDir] the base dirctory - default: `'.'`
  *
  * @property {boolean} [hushErrors] Whether to ignore errors and reply with status code `500`, or pass the error to `next` function - default: `false`
+ *
+ * @property {boolean} [trailingSlash] Redirect directory requests to add trailing slash - default `true`
+ *
+ *    disabling this option will led to relative path issues. [see #9](https://github.com/Ceicc/range/issues/9)
+ *
+ *    `implicitIndex` must be `true`
  */
 
 
@@ -63,7 +69,7 @@ function range(options = {}) {
 
   optionsChecker(options, {
     baseDir:        { default: '.',   type: "string"  },
-    hushErrors:   { default: false, type: "boolean" },
+    hushErrors:     { default: false, type: "boolean" },
     conditional:    { default: true,  type: "boolean" },
     range:          { default: true,  type: "boolean" },
     maxAge:         { default: 10800, type: "number"  },
@@ -71,9 +77,15 @@ function range(options = {}) {
     lastModified:   { default: true,  type: "boolean" },
     notFound:       { default: true,  type: "boolean|string" },
     implicitIndex:  { default: true,  type: "boolean|array"  },
+    trailingSlash:  { default: true,  type: "boolean" },
   })
 
 
+  /**
+   * @param {IncomingMessage} req request object
+   * @param {ServerResponse} res response object
+   * @param {Function} next errors handler function
+   */
   return async function rangeMiddleware(req, res, next = console.error) {
 
     if (!(req instanceof IncomingMessage)) {
@@ -121,6 +133,13 @@ function range(options = {}) {
 
       if (!options.implicitIndex)
         return forgetAboutIt(res, 404)
+
+      if (options.trailingSlash && !hasTrailingSlash(req.pathname)) {
+        res.statusCode = 301
+        res.setHeader("Location", req.pathname + "/")
+        res.end()
+        return
+      }
 
       const extensions = new Set()
 
@@ -294,4 +313,12 @@ function rangeRequest(path, res, range, size) {
   res.statusCode = 206 // partial content
   res.setHeader("content-range", `bytes ${start}-${end}/${size}`)
   return streamIt(path, res, { start, end })
+}
+
+/**
+ * @param {string} url
+ * @returns {boolean}
+ */
+function hasTrailingSlash(url) {
+  return url[url.length - 1] === "/"
 }
