@@ -3,7 +3,7 @@ A static files middleware
 
 ## Installation
 ```
-npm i @ceicc/range@3.0.0-beta.1
+npm i @ceicc/range@next
 ```
 
 ## Usage
@@ -20,6 +20,7 @@ app.get('/public/*', range())
 
 app.listen(3000)
 ```
+
 This will serve every request starts with `/public/` with `range`.
 
 The base directory will be `.` or the current working directory, unless specified in the `options` object.
@@ -108,7 +109,7 @@ The base directory will be `.` or the current working directory, unless specifie
   - default: `true`
   - type: `boolean`
 
-  Redirect directory requests to add trailing slash - default `true`
+  Redirect directory requests to add trailing slash.
 
   disabling this option will led to relative path issues. [see #9](https://github.com/Ceicc/range/issues/9)
 
