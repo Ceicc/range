@@ -29,6 +29,13 @@
     "email": "husam999h@gmail.com"
   },
   "homepage": "https://github.com/ceicc/range#readme",
+  "files": [
+    "index.js",
+    "README.md",
+    "LICENSE",
+    "package.json"
+  ],
+  "types": "index.d.ts",
   "dependencies": {
     "@ceicc/options-checker": "^1.0.2",
     "mime-types": "^2.1.32"
