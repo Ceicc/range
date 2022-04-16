@@ -41,6 +41,7 @@
     "mime-types": "^2.1.32"
   },
   "devDependencies": {
+    "@types/express": "^4.17.13",
     "@types/mime-types": "^2.1.1",
     "@types/node": "^17.0.23",
     "express": "^4.17.2",
