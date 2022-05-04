@@ -2,17 +2,17 @@ import { createReadStream, promises } from "fs"
 import { pipeline } from "stream"
 import { promisify } from "util"
 import { contentType } from "mime-types"
-import optionsChecker from "@ceicc/options-checker"
+import optionsChecker = require("@ceicc/options-checker")
 import { URL } from "url"
 import type { IncomingMessage, ServerResponse } from "http"
 import type { NextFunction } from "express"
 
-// Im not going to use `stream/promises` liberary because it was added in
+// Im not going to use `stream/promises` library because it was added in
 // version 15.0, Not all hosting providers support that version (including mine)
 const pipelinePromised = promisify(pipeline)
 
 
-export default range
+export = range
 
 
 type options = {
@@ -20,11 +20,11 @@ type options = {
   hushErrors?: boolean,
   conditional?: boolean,
   range?: boolean,
-  maxAge?: number,
+  maxAge?: number | false,
   etag?: boolean,
   lastModified?: boolean,
-  notFound?: boolean|string,
-  implicitIndex?: boolean|Array<string>,
+  notFound?: boolean | string,
+  implicitIndex?: boolean | Array<string>,
   trailingSlash?: boolean,
 }
 
@@ -35,9 +35,9 @@ function range(options: options = {}) {
     hushErrors:     { default: false, type: "boolean" },
     conditional:    { default: true,  type: "boolean" },
     range:          { default: true,  type: "boolean" },
-    maxAge:         { default: 10800, type: "number"  },
     etag:           { default: true,  type: "boolean" },
     lastModified:   { default: true,  type: "boolean" },
+    maxAge:         { default: 10800, type: "number|boolean" },
     notFound:       { default: true,  type: "boolean|string" },
     implicitIndex:  { default: true,  type: "boolean|array"  },
     trailingSlash:  { default: true,  type: "boolean" },
@@ -116,8 +116,8 @@ function range(options: options = {}) {
 
     etag                  && res.setHeader("etag", etag)
     options.lastModified  && res.setHeader("last-modified", stat.mtime.toUTCString())
-    options.maxAge        && res.setHeader("cache-control", `max-age=${options.maxAge}`)
     options.range         && res.setHeader("accept-ranges", "bytes") // Hint to the browser range is supported
+    typeof options.maxAge === "number" && res.setHeader("cache-control", `max-age=${options.maxAge}`)
 
     const extension = pathname.split(".").pop()
 

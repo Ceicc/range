@@ -1,12 +1,12 @@
 import type { IncomingMessage, ServerResponse } from "http";
 import type { NextFunction } from "express";
-export default range;
+export = range;
 declare type options = {
     baseDir?: string;
     hushErrors?: boolean;
     conditional?: boolean;
     range?: boolean;
-    maxAge?: number;
+    maxAge?: number | false;
     etag?: boolean;
     lastModified?: boolean;
     notFound?: boolean | string;
