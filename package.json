@@ -2,7 +2,7 @@
   "name": "@ceicc/range",
   "version": "3.0.0-beta.4",
   "description": "http range request handler",
-  "main": "index.js",
+  "main": "lib/index.js",
   "scripts": {
     "dev": "nodemon test/server.js",
     "app-dev": "nodemon test/app.js",
@@ -29,12 +29,12 @@
   },
   "homepage": "https://github.com/ceicc/range#readme",
   "files": [
-    "index.js",
+    "lib/",
     "README.md",
     "LICENSE",
     "package.json"
   ],
-  "types": "index.d.ts",
+  "types": "types/",
   "dependencies": {
     "@ceicc/options-checker": "^1.0.2",
     "mime-types": "^2.1.32"
