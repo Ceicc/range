@@ -4,8 +4,13 @@ import { promisify } from "util"
 import { contentType } from "mime-types"
 import optionsChecker = require("@ceicc/options-checker")
 import { URL } from "url"
-import type { IncomingMessage, ServerResponse } from "http"
+import Negotiator from "negotiator"
+import { createBrotliCompress, createGzip, createDeflate } from "zlib"
+
+import type { IncomingHttpHeaders, IncomingMessage, ServerResponse } from "http"
 import type { NextFunction } from "express"
+import type { BrotliCompress, Gzip, Deflate } from "zlib"
+import type { Transform } from "stream"
 
 // Im not going to use `stream/promises` library because it was added in
 // version 15.0, Not all hosting providers support that version (including mine)
@@ -13,6 +18,8 @@ const pipelinePromised = promisify(pipeline)
 
 
 export = range
+
+const COMPRESSION_ENCODINGS = ["br", "gzip", "deflate"]
 
 
 type options = {
@@ -152,7 +159,21 @@ function range(options: options = {}) {
 
         try {
 
-          await streamIt(options.baseDir + pathname, res)
+          const encoding = getPossibleEncoding({ headers: req.headers, availableEncodings: COMPRESSION_ENCODINGS })
+
+          if (encoding) {
+
+            const encodingStream = getCompressionStream(encoding)
+
+            if (encodingStream) {
+              res.removeHeader("content-length")
+              res.setHeader("content-encoding", encoding)
+
+              return await streamIt({ path: options.baseDir + pathname, res, transformStream: encodingStream })
+            }
+          }
+
+          return await streamIt({ path: options.baseDir + pathname, res })
 
         } catch (error) {
 
@@ -192,7 +213,21 @@ function range(options: options = {}) {
 
     try {
 
-      await streamIt(options.baseDir + pathname, res)
+      const encoding = getPossibleEncoding({ headers: req.headers, availableEncodings: COMPRESSION_ENCODINGS })
+
+      if (encoding) {
+
+        const encodingStream = getCompressionStream(encoding)
+
+        if (encodingStream) {
+          res.removeHeader("content-length")
+          res.setHeader("content-encoding", encoding)
+
+          return await streamIt({ path: options.baseDir + pathname, res, transformStream: encodingStream })
+        }
+      }
+
+      return await streamIt({ path: options.baseDir + pathname, res })
 
     } catch (error) {
 
@@ -211,16 +246,36 @@ function hush(res: ServerResponse) {
   }
 }
 
-async function streamIt(path: string, res: ServerResponse, opts?: { start: number, end: number }) {
+interface streamItParams {
+  path: string,
+  res: ServerResponse,
+  range?: { start: number, end: number },
+  transformStream?: Transform
+}
+
+async function streamIt({ path, res, range, transformStream }: streamItParams) {
+
+  const readableFile = createReadStream(path, range ? { start: range.start, end: range.end } : undefined)
+
+  if (transformStream) {
+    return pipelinePromised(
+      readableFile,
+      transformStream,
+      res
+    ).catch(catchError)
+  }
+
   return pipelinePromised(
-    createReadStream(path, opts ? { start: opts.start, end: opts.end} : undefined),
-    res,
-  ).catch(err => {
-      if (!err || err.code === "ERR_STREAM_PREMATURE_CLOSE") // Stream closed (normal)
-        return
-      else
-        throw err
-    })
+    readableFile,
+    res
+  ).catch(catchError)
+
+  function catchError (err: any) {
+    if (!err || err.code === "ERR_STREAM_PREMATURE_CLOSE") // Stream closed (normal)
+      return
+    else
+      throw err
+  }
 }
 
 function getEtag(mtime: Date, size: number) {
@@ -274,9 +329,40 @@ function rangeRequest(path: string, res: ServerResponse, rangeHeader: string, si
 
   res.statusCode = 206 // partial content
   res.setHeader("content-range", `bytes ${start}-${end}/${size}`)
-  return streamIt(path, res, { start, end })
+  return streamIt({ path, res, range: { start, end } })
 }
 
 function hasTrailingSlash(url: string): boolean {
   return url[url.length - 1] === "/"
+}
+
+
+// function getCompressionStream(encoding: "br" | string): BrotliCompress
+// function getCompressionStream(encoding: "gzip" | string): Gzip
+// function getCompressionStream(encoding: "deflate" | string): Deflate
+// function getCompressionStream(encoding: string): null
+
+function getCompressionStream(encoding: string): BrotliCompress | Gzip | Deflate | null {
+  switch (encoding) {
+    case "br":
+      return createBrotliCompress()
+
+    case "gzip":
+      return createGzip()
+
+    case "deflate":
+      return createDeflate()
+
+    default:
+      return null
+  }
+}
+
+interface getPossibleEncodingParam {
+  headers: IncomingHttpHeaders,
+  availableEncodings: string[],
+}
+
+function getPossibleEncoding({ headers, availableEncodings }: getPossibleEncodingParam) {
+  return new Negotiator({ headers }).encoding(availableEncodings)
 }
