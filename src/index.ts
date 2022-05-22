@@ -155,7 +155,7 @@ function range(options: options = {}) {
 
         try {
 
-          if (options.compression && fileContentType) {
+          if (options.compression && fileContentType && stat.size > 1024) {
 
             const { encoding, stream } = getPossibleEncoding({
               headers: req.headers,
@@ -211,7 +211,7 @@ function range(options: options = {}) {
 
     try {
 
-      if (options.compression && fileContentType) {
+      if (options.compression && fileContentType && stat.size > 1024) {
 
         const { encoding, stream } = getPossibleEncoding({
           headers: req.headers,
