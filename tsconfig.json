@@ -5,6 +5,7 @@
     "declaration": true,
     "strict": true,
     "noEmitOnError": true,
+    "esModuleInterop": true,
     "outDir": "lib",
     "declarationDir": "types",
   },
