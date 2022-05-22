@@ -21,8 +21,6 @@ const pipelinePromised = promisify(pipeline)
 
 export = range
 
-const COMPRESSION_ENCODINGS = ["br", "gzip", "deflate"]
-
 
 type options = {
   baseDir?: string,
@@ -35,6 +33,7 @@ type options = {
   notFound?: boolean | string,
   implicitIndex?: boolean | Array<string>,
   trailingSlash?: boolean,
+  compression?: string[] | false,
 }
 
 function range(options: options = {}) {
@@ -50,6 +49,7 @@ function range(options: options = {}) {
     notFound:       { default: true,  type: "boolean|string" },
     implicitIndex:  { default: true,  type: "boolean|array"  },
     trailingSlash:  { default: true,  type: "boolean" },
+    compression:    { default: false, type: "boolean|array"  },
   })
 
 
@@ -155,17 +155,20 @@ function range(options: options = {}) {
 
         try {
 
-          const { encoding, stream } = getPossibleEncoding({
-            headers: req.headers,
-            availableEncodings: COMPRESSION_ENCODINGS,
-            contentType: fileContentType || ""
-          })
+          if (options.compression && fileContentType) {
 
-          if (stream) {
-            res.removeHeader("content-length")
-            res.setHeader("content-encoding", encoding)
+            const { encoding, stream } = getPossibleEncoding({
+              headers: req.headers,
+              availableEncodings: options.compression,
+              contentType: fileContentType
+            })
 
-            return await streamIt({ path: options.baseDir + pathname, res, transformStream: stream })
+            if (stream) {
+              res.removeHeader("content-length")
+              res.setHeader("content-encoding", encoding)
+
+              return await streamIt({ path: options.baseDir + pathname, res, transformStream: stream })
+            }
           }
 
           return await streamIt({ path: options.baseDir + pathname, res })
@@ -208,17 +211,20 @@ function range(options: options = {}) {
 
     try {
 
-      const { encoding, stream } = getPossibleEncoding({
-        headers: req.headers,
-        availableEncodings: COMPRESSION_ENCODINGS,
-        contentType: fileContentType || ""
-      })
+      if (options.compression && fileContentType) {
 
-      if (stream) {
-        res.removeHeader("content-length")
-        res.setHeader("content-encoding", encoding)
+        const { encoding, stream } = getPossibleEncoding({
+          headers: req.headers,
+          availableEncodings: options.compression,
+          contentType: fileContentType || ""
+        })
 
-        return await streamIt({ path: options.baseDir + pathname, res, transformStream: stream })
+        if (stream) {
+          res.removeHeader("content-length")
+          res.setHeader("content-encoding", encoding)
+
+          return await streamIt({ path: options.baseDir + pathname, res, transformStream: stream })
+        }
       }
 
       return await streamIt({ path: options.baseDir + pathname, res })
