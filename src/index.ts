@@ -6,6 +6,8 @@ import optionsChecker = require("@ceicc/options-checker")
 import { URL } from "url"
 import Negotiator from "negotiator"
 import { createBrotliCompress, createGzip, createDeflate } from "zlib"
+import { extname } from "path"
+import compressible from "compressible"
 
 import type { IncomingHttpHeaders, IncomingMessage, ServerResponse } from "http"
 import type { NextFunction } from "express"
@@ -120,20 +122,14 @@ function range(options: options = {}) {
 
 
     const etag = options.etag && getEtag(stat.mtime, stat.size)
+    const extension = extname(pathname)
+    const fileContentType = contentType(extension)
 
     etag                  && res.setHeader("etag", etag)
     options.lastModified  && res.setHeader("last-modified", stat.mtime.toUTCString())
     options.range         && res.setHeader("accept-ranges", "bytes") // Hint to the browser range is supported
     typeof options.maxAge === "number" && res.setHeader("cache-control", `max-age=${options.maxAge}`)
-
-    const extension = pathname.split(".").pop()
-
-    if (extension) {
-      const contentTypeHeader = contentType(extension)
-      typeof contentTypeHeader === "string" && res.setHeader("content-type", contentTypeHeader)
-    }
-
-
+    typeof fileContentType === "string" && res.setHeader("content-type", fileContentType)
     res.setHeader("content-length", stat.size)
 
     // check conditional requests
@@ -159,18 +155,17 @@ function range(options: options = {}) {
 
         try {
 
-          const encoding = getPossibleEncoding({ headers: req.headers, availableEncodings: COMPRESSION_ENCODINGS })
+          const { encoding, stream } = getPossibleEncoding({
+            headers: req.headers,
+            availableEncodings: COMPRESSION_ENCODINGS,
+            contentType: fileContentType || ""
+          })
 
-          if (encoding) {
+          if (stream) {
+            res.removeHeader("content-length")
+            res.setHeader("content-encoding", encoding)
 
-            const encodingStream = getCompressionStream(encoding)
-
-            if (encodingStream) {
-              res.removeHeader("content-length")
-              res.setHeader("content-encoding", encoding)
-
-              return await streamIt({ path: options.baseDir + pathname, res, transformStream: encodingStream })
-            }
+            return await streamIt({ path: options.baseDir + pathname, res, transformStream: stream })
           }
 
           return await streamIt({ path: options.baseDir + pathname, res })
@@ -213,18 +208,17 @@ function range(options: options = {}) {
 
     try {
 
-      const encoding = getPossibleEncoding({ headers: req.headers, availableEncodings: COMPRESSION_ENCODINGS })
+      const { encoding, stream } = getPossibleEncoding({
+        headers: req.headers,
+        availableEncodings: COMPRESSION_ENCODINGS,
+        contentType: fileContentType || ""
+      })
 
-      if (encoding) {
+      if (stream) {
+        res.removeHeader("content-length")
+        res.setHeader("content-encoding", encoding)
 
-        const encodingStream = getCompressionStream(encoding)
-
-        if (encodingStream) {
-          res.removeHeader("content-length")
-          res.setHeader("content-encoding", encoding)
-
-          return await streamIt({ path: options.baseDir + pathname, res, transformStream: encodingStream })
-        }
+        return await streamIt({ path: options.baseDir + pathname, res, transformStream: stream })
       }
 
       return await streamIt({ path: options.baseDir + pathname, res })
@@ -336,12 +330,6 @@ function hasTrailingSlash(url: string): boolean {
   return url[url.length - 1] === "/"
 }
 
-
-// function getCompressionStream(encoding: "br" | string): BrotliCompress
-// function getCompressionStream(encoding: "gzip" | string): Gzip
-// function getCompressionStream(encoding: "deflate" | string): Deflate
-// function getCompressionStream(encoding: string): null
-
 function getCompressionStream(encoding: string): BrotliCompress | Gzip | Deflate | null {
   switch (encoding) {
     case "br":
@@ -361,8 +349,18 @@ function getCompressionStream(encoding: string): BrotliCompress | Gzip | Deflate
 interface getPossibleEncodingParam {
   headers: IncomingHttpHeaders,
   availableEncodings: string[],
+  contentType: string,
 }
 
-function getPossibleEncoding({ headers, availableEncodings }: getPossibleEncodingParam) {
-  return new Negotiator({ headers }).encoding(availableEncodings)
+function getPossibleEncoding({ headers, availableEncodings, contentType }: getPossibleEncodingParam) {
+
+  const encoding = new Negotiator({ headers }).encoding(availableEncodings)
+  const isComressible = compressible(contentType)
+
+  if (!encoding || !isComressible)
+    return { encoding, stream: null }
+
+  const stream = getCompressionStream(encoding)
+
+  return { encoding, stream }
 }
