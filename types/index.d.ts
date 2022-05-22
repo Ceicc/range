@@ -12,5 +12,6 @@ declare type options = {
     notFound?: boolean | string;
     implicitIndex?: boolean | Array<string>;
     trailingSlash?: boolean;
+    compression?: string[] | false;
 };
 declare function range(options?: options): (req: IncomingMessage, res: ServerResponse, next: NextFunction) => Promise<void>;
