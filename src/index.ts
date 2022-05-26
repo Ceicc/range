@@ -4,14 +4,11 @@ import { promisify } from "util"
 import { contentType } from "mime-types"
 import optionsChecker = require("@ceicc/options-checker")
 import { URL } from "url"
-import Negotiator from "negotiator"
-import { createBrotliCompress, createGzip, createDeflate } from "zlib"
 import { extname } from "path"
-import compressible from "compressible"
+import * as utils from "./utils.js"
 
-import type { IncomingHttpHeaders, IncomingMessage, ServerResponse } from "http"
+import type { IncomingMessage, ServerResponse } from "http"
 import type { NextFunction } from "express"
-import type { BrotliCompress, Gzip, Deflate } from "zlib"
 import type { Transform } from "stream"
 
 // Im not going to use `stream/promises` library because it was added in
@@ -68,7 +65,7 @@ function range(options: options = {}) {
       if (error?.code === "ENOENT") {
 
         if (options.notFound === true)
-          return forgetAboutIt(res, 404)
+          return utils.forgetAboutIt(res, 404)
 
         if (typeof options.notFound === "string") {
 
@@ -79,19 +76,19 @@ function range(options: options = {}) {
           return rangeMiddleware(req, res, next)
         }
 
-        return options.hushErrors ? forgetAboutIt(res, 404) : next(error)
+        return options.hushErrors ? utils.forgetAboutIt(res, 404) : next(error)
       }
 
-      return options.hushErrors ? forgetAboutIt(res, 500) : next(error)
+      return options.hushErrors ? utils.forgetAboutIt(res, 500) : next(error)
     }
 
 
     if (stat.isDirectory()) {
 
       if (!options.implicitIndex)
-        return forgetAboutIt(res, 404)
+        return utils.forgetAboutIt(res, 404)
 
-      if (options.trailingSlash && !hasTrailingSlash(pathname)) {
+      if (options.trailingSlash && !utils.hasTrailingSlash(pathname)) {
         res.statusCode = 301
         res.setHeader("Location", pathname + "/")
         res.end()
@@ -117,11 +114,11 @@ function range(options: options = {}) {
         return rangeMiddleware(req, res, next)
       }
 
-      return forgetAboutIt(res, 404)
+      return utils.forgetAboutIt(res, 404)
     }
 
 
-    const etag = options.etag && getEtag(stat.mtime, stat.size)
+    const etag = options.etag && utils.getEtag(stat.mtime, stat.size)
     const extension = extname(pathname)
     const fileContentType = contentType(extension)
 
@@ -143,7 +140,7 @@ function range(options: options = {}) {
         ifNoneMatch === etag ||
         ifModifiedSince && ( Date.parse(ifModifiedSince) - stat.mtime.getTime() ) >= -2000
       )
-        return forgetAboutIt(res, 304)
+        return utils.forgetAboutIt(res, 304)
 
     }
 
@@ -157,7 +154,7 @@ function range(options: options = {}) {
 
           if (options.compression && fileContentType && stat.size > 1024) {
 
-            const { encoding, stream } = getPossibleEncoding({
+            const { encoding, stream } = utils.getPossibleEncoding({
               headers: req.headers,
               availableEncodings: options.compression,
               contentType: fileContentType
@@ -175,7 +172,7 @@ function range(options: options = {}) {
 
         } catch (error) {
 
-          options.hushErrors ? hush(res) : next(error)
+          options.hushErrors ? utils.hush(res) : next(error)
 
         }
 
@@ -191,7 +188,7 @@ function range(options: options = {}) {
           ifMatch && ifMatch !== etag ||
           ifUnmodifiedSince && ( Date.parse(ifUnmodifiedSince) - stat.mtime.getTime() ) < -2000
         )
-          return forgetAboutIt(res, 412)
+          return utils.forgetAboutIt(res, 412)
       }
 
       try {
@@ -200,7 +197,7 @@ function range(options: options = {}) {
 
       } catch (error) {
 
-        options.hushErrors ? hush(res) : next(error)
+        options.hushErrors ? utils.hush(res) : next(error)
 
       }
 
@@ -213,7 +210,7 @@ function range(options: options = {}) {
 
       if (options.compression && fileContentType && stat.size > 1024) {
 
-        const { encoding, stream } = getPossibleEncoding({
+        const { encoding, stream } = utils.getPossibleEncoding({
           headers: req.headers,
           availableEncodings: options.compression,
           contentType: fileContentType || ""
@@ -231,20 +228,13 @@ function range(options: options = {}) {
 
     } catch (error) {
 
-      options.hushErrors ? hush(res) : next(error)
+      options.hushErrors ? utils.hush(res) : next(error)
 
     }
 
   }
 }
 
-
-function hush(res: ServerResponse) {
-  if (!res.headersSent) {
-    res.statusCode = 500
-    res.end()
-  }
-}
 
 interface streamItParams {
   path: string,
@@ -278,18 +268,6 @@ async function streamIt({ path, res, range, transformStream }: streamItParams) {
   }
 }
 
-function getEtag(mtime: Date, size: number) {
-  return `W/"${size.toString(16)}-${mtime.getTime().toString(16)}"`;
-}
-
-function forgetAboutIt(res: ServerResponse, status: number) {
-  res.removeHeader("content-type");
-  res.removeHeader("content-length");
-  res.removeHeader("cache-control");
-  res.statusCode = status;
-  res.end();
-}
-
 function rangeRequest(path: string, res: ServerResponse, rangeHeader: string, size: number) {
 
   res.removeHeader("content-length")
@@ -298,7 +276,7 @@ function rangeRequest(path: string, res: ServerResponse, rangeHeader: string, si
 
   if (!rangeRegex) { // Incorrect pattren
     res.setHeader("content-range", `bytes */${size}`)
-    return forgetAboutIt(res, 416)
+    return utils.forgetAboutIt(res, 416)
   }
 
   let [ , start, end] = rangeRegex.map(n => Number(n))
@@ -324,49 +302,10 @@ function rangeRequest(path: string, res: ServerResponse, rangeHeader: string, si
 
   if (start < 0 || start > end || end >= size) { // Range out of order or bigger than file size
     res.setHeader("content-range", `bytes */${size}`)
-    return forgetAboutIt(res, 416)
+    return utils.forgetAboutIt(res, 416)
   }
 
   res.statusCode = 206 // partial content
   res.setHeader("content-range", `bytes ${start}-${end}/${size}`)
   return streamIt({ path, res, range: { start, end } })
-}
-
-function hasTrailingSlash(url: string): boolean {
-  return url[url.length - 1] === "/"
-}
-
-function getCompressionStream(encoding: string): BrotliCompress | Gzip | Deflate | null {
-  switch (encoding) {
-    case "br":
-      return createBrotliCompress()
-
-    case "gzip":
-      return createGzip()
-
-    case "deflate":
-      return createDeflate()
-
-    default:
-      return null
-  }
-}
-
-interface getPossibleEncodingParam {
-  headers: IncomingHttpHeaders,
-  availableEncodings: string[],
-  contentType: string,
-}
-
-function getPossibleEncoding({ headers, availableEncodings, contentType }: getPossibleEncodingParam) {
-
-  const encoding = new Negotiator({ headers }).encoding(availableEncodings)
-  const isComressible = compressible(contentType)
-
-  if (!encoding || !isComressible)
-    return { encoding, stream: null }
-
-  const stream = getCompressionStream(encoding)
-
-  return { encoding, stream }
 }
