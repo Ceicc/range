@@ -115,6 +115,29 @@ The base directory will be `.` or the current working directory, unless specifie
 
   `implicitIndex` must be `true`
 
+#### `compression`
+
+  - default: `false`
+  - type: `false|Array<string>`
+
+  Compress the response body with one of the compression algorithm given in the array.
+
+  availabel compression methods are:
+  1. `"br"`
+  1. `"gzip"`
+  1. `"deflate"`
+
+  the compression method will be determined based on the request's `accept-encoding` header using npm package `negotiator`.
+
+#### `dateHeader`
+
+  - default: `true`
+  - type: `boolean`
+
+  send `date` response header, `new Date().toUTCString()` function will be used to get the current date.
+
+  [learn more](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Date) about the `date` header
+
 
 ## Real World Example
 
