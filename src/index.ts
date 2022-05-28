@@ -31,6 +31,7 @@ type options = {
   implicitIndex?: boolean | Array<string>,
   trailingSlash?: boolean,
   compression?: string[] | false,
+  dateHeader?: boolean,
 }
 
 function range(options: options = {}) {
@@ -47,6 +48,7 @@ function range(options: options = {}) {
     implicitIndex:  { default: true,  type: "boolean|array"  },
     trailingSlash:  { default: true,  type: "boolean" },
     compression:    { default: false, type: "boolean|array"  },
+    dateHeader:     { default: true,  type: "boolean" },
   })
 
 
@@ -128,6 +130,7 @@ function range(options: options = {}) {
     typeof options.maxAge === "number" && res.setHeader("cache-control", `max-age=${options.maxAge}`)
     typeof fileContentType === "string" && res.setHeader("content-type", fileContentType)
     res.setHeader("content-length", stat.size)
+    options.dateHeader    && res.setHeader("date", new Date().toUTCString())
 
     // check conditional requests
     if ( options.conditional) {

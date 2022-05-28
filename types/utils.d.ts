@@ -16,4 +16,5 @@ export declare function getPossibleEncoding({ headers, availableEncodings, conte
     stream: Gzip | Deflate | BrotliCompress | undefined;
 };
 export declare function hasTrailingSlash(url: string): boolean;
+export declare function hush(res: ServerResponse): void;
 export {};
