@@ -1,4 +1,4 @@
 .git
 node_modules/
-test/
+test/public/large
 lib/
