@@ -4,9 +4,8 @@
   "description": "http range request handler",
   "main": "lib/index.js",
   "scripts": {
-    "dev": "nodemon test/server.js",
-    "app-dev": "nodemon test/app.js",
-    "dev-v3": "node test/v3.js"
+    "test": "node test/server.test.js",
+    "dev": "nodemon test/server.js"
   },
   "repository": {
     "type": "git",
