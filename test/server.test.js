@@ -10,9 +10,11 @@ test("no options (default)", async (t) => {
   const app = createServer()
 
 
-  await supertest(app)
-    .get('/')
-    .expect(404)
+  await t.test("GET /", (t) => (
+    supertest(app)
+      .get('/')
+      .expect(404)
+  ))
 
 })
 
@@ -23,14 +25,18 @@ test("baseDir option", async (t) => {
   })
 
 
-  await supertest(app)
-    .get('/')
-    .expect("content-type", contentType("html"))
-    .expect(200)
+  await t.test("GET /", (t) => (
+    supertest(app)
+      .get('/')
+      .expect("content-type", contentType("html"))
+      .expect(200)
+  ))
 
-  await supertest(app)
-    .get('/data.json')
-    .expect("content-type", contentType("json"))
-    .expect(200)
+  await t.test("GET /data.json", (t) => (
+    supertest(app)
+      .get('/data.json')
+      .expect("content-type", contentType("json"))
+      .expect(200)
+  ))
 
 })
