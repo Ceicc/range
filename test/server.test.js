@@ -1,42 +1,40 @@
-const test = require("node:test")
-const assert = require("node:assert/strict")
 const supertest = require("supertest")
 const { contentType } = require("mime-types")
 
 const createServer = require("./server.js")
 
-test("no options (default)", async (t) => {
+describe("no options (default)", () => {
 
   const app = createServer()
 
 
-  await t.test("GET /", (t) => (
+  test("GET /", (done) => {
     supertest(app)
       .get('/')
-      .expect(404)
-  ))
+      .expect(404, done)
+  })
 
 })
 
-test("baseDir option", async (t) => {
+describe("baseDir option", () => {
 
   const app = createServer({
     baseDir: "./test/static"
   })
 
 
-  await t.test("GET /", (t) => (
+  test("GET /", (done) => {
     supertest(app)
       .get('/')
       .expect("content-type", contentType("html"))
-      .expect(200)
-  ))
+      .expect(200, done)
+  })
 
-  await t.test("GET /data.json", (t) => (
+  test("GET /data.json", (done) => {
     supertest(app)
       .get('/data.json')
       .expect("content-type", contentType("json"))
-      .expect(200)
-  ))
+      .expect(200, done)
+  })
 
 })
