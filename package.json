@@ -1,6 +1,6 @@
 {
   "name": "@ceicc/range",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "description": "http range request handler",
   "main": "index.js",
   "scripts": {
