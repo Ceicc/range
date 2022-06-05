@@ -29,6 +29,7 @@
   "homepage": "https://github.com/ceicc/range#readme",
   "files": [
     "lib/",
+    "types/",
     "README.md",
     "LICENSE",
     "package.json"
