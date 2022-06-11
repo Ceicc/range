@@ -4,7 +4,7 @@
   "description": "http range request handler",
   "main": "lib/index.js",
   "scripts": {
-    "test": "node test/server.test.js",
+    "test": "jest",
     "dev": "nodemon test/server.js"
   },
   "repository": {
