@@ -310,5 +310,6 @@ function rangeRequest(path: string, res: ServerResponse, rangeHeader: string, si
 
   res.statusCode = 206 // partial content
   res.setHeader("content-range", `bytes ${start}-${end}/${size}`)
+  res.setHeader("content-length", end - start + 1)
   return streamIt({ path, res, range: { start, end } })
 }
