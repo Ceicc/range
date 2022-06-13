@@ -1,10 +1,12 @@
-import { createReadStream, promises } from "fs"
-import { pipeline } from "stream"
-import { promisify } from "util"
+import { createReadStream, promises } from "node:fs"
+import { pipeline } from "node:stream"
+import { promisify } from "node:util"
+import { URL } from "node:url"
+import { extname } from "node:path"
+
 import { contentType } from "mime-types"
 import optionsChecker from "@ceicc/options-checker"
-import { URL } from "url"
-import { extname } from "path"
+
 import * as utils from "./utils.js"
 
 import type { IncomingMessage, ServerResponse } from "http"

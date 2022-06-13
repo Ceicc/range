@@ -1,4 +1,5 @@
-import { createBrotliCompress, createGzip, createDeflate } from "zlib"
+import { createBrotliCompress, createGzip, createDeflate } from "node:zlib"
+
 import compressible from "compressible"
 import Negotiator from "negotiator"
 
