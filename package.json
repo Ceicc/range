@@ -2,9 +2,10 @@
   "name": "@ceicc/range",
   "version": "3.0.0-beta.7",
   "description": "http range request handler",
-  "main": "lib/index.js",
+  "exports": "./lib/index.js",
+  "type": "module",
   "scripts": {
-    "test": "jest",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "dev": "nodemon test/server.js"
   },
   "repository": {
@@ -35,6 +36,9 @@
     "package.json"
   ],
   "types": "types/",
+  "engines": {
+    "node": ">=14.16"
+  },
   "dependencies": {
     "@ceicc/options-checker": "^1.0.2",
     "compressible": "^2.0.18",
