@@ -1,7 +1,10 @@
-const express = require("express")
-const range = require("../lib/index.js")
+import { fileURLToPath } from "node:url"
 
-function main(options) {
+import express from "express"
+
+import { range } from "../lib/index.js"
+
+function createServer(options) {
 
   const app = express()
 
@@ -21,10 +24,9 @@ function main(options) {
 }
 
 
-module.exports = main
+export { createServer }
 
-
-if (require.main === module) {
-  const app = main()
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const app = createServer()
   app.listen(3000, "127.0.0.1", () => console.log("localhost:3000"))
 }

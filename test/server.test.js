@@ -1,8 +1,10 @@
-const supertest = require("supertest")
-const { contentType } = require("mime-types")
+import { jest, describe, test } from "@jest/globals"
 
-const createServer = require("./server.js")
-const parser = require("./parser.js")
+import supertest from "supertest"
+import { contentType } from "mime-types"
+
+import { createServer } from "./server.js"
+import { parser } from "./parser.js"
 
 describe("no options (default)", () => {
 

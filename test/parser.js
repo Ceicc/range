@@ -1,4 +1,4 @@
-module.exports = (res, cb) => {
+export function parser(res, cb) {
   const data = []
   res.on("data", chunk => {
     data.push(chunk)

@@ -2,7 +2,7 @@ import { createReadStream, promises } from "fs"
 import { pipeline } from "stream"
 import { promisify } from "util"
 import { contentType } from "mime-types"
-import optionsChecker = require("@ceicc/options-checker")
+import optionsChecker from "@ceicc/options-checker"
 import { URL } from "url"
 import { extname } from "path"
 import * as utils from "./utils.js"
@@ -16,7 +16,8 @@ import type { Transform } from "stream"
 const pipelinePromised = promisify(pipeline)
 
 
-export = range
+export { range }
+export default range
 
 
 type options = {
