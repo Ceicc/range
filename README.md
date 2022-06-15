@@ -1,9 +1,12 @@
-# range
-A static files middleware
+# Range
+Middleware for serving static files
+
+[![NPM Downloads per month](https://img.shields.io/npm/dm/@ceicc/range?logo=npm&style=flat-square&color=088)](https://npmjs.com/package/@ceicc/range)
+[![Module type](https://img.shields.io/badge/Module-ESM-informational?style=flat-square)](https://gist.github.com/sindresorhus/a39789f98801d908bbc7ff3ecc99d99c)
 
 ## Installation
-```
-npm i @ceicc/range@next
+```bash
+npm i @ceicc/range
 ```
 
 ## Usage
@@ -11,10 +14,7 @@ npm i @ceicc/range@next
 add `range` to an existence express app
 
 ```js
-import range from "@ceicc/range"
-
-// CommonJS
-// const range = require("@ceicc/range")
+import { range } from "@ceicc/range"
 
 app.get('/public/*', range())
 
@@ -127,7 +127,7 @@ The base directory will be `.` or the current working directory, unless specifie
   1. `"gzip"`
   1. `"deflate"`
 
-  the compression method will be determined based on the request's `accept-encoding` header using npm package `negotiator`.
+  the compression method will be determined based on the request's [`accept-encoding`](https://developers.mozilla.org/en-US/docs/Web/HTTP/Headers/accept-encoding) header using npm package [`negotiator`](https://npmjs.com/package/negotiator).
 
 #### `dateHeader`
 
@@ -142,17 +142,21 @@ The base directory will be `.` or the current working directory, unless specifie
 ## Real World Example
 
 ```js
+import { fileURLToPath } from "node:url"
+import { join, dirname } from "node:path"
 import express from "express"
-import range from "@ceicc/range"
+import { range } from "@ceicc/range"
 
 const app = express()
 
-app.get('*', range({ baseDir: './public/' }))
+const __dirname = dirname(fileURLToPath(import.meta.url))
+
+app.get('*', range({ baseDir: join(__dirname, "public") }))
 
 app.use((error, req, res, next) => {
   console.error(error)
   res.sendStatus(500)
 })
 
-app.listen(80, () => console.log("server listening on localhost"))
+app.listen(3000, () => console.log("server listening on http://localhost:3000"))
 ```
