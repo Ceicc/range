@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "NodeNext",
+    "declaration": true,
+    "strict": true,
+    "noEmitOnError": true,
+    "esModuleInterop": true,
+    "outDir": "lib",
+    "declarationDir": "types",
+  },
+  "include": ["src"],
+  "exclude": ["node_modules"],
+}

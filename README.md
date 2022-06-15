@@ -1,92 +1,162 @@
-# range
-static files request handler
+# Range
+Middleware for serving static files
 
-# Installation
-```
+[![NPM Downloads per month](https://img.shields.io/npm/dm/@ceicc/range?logo=npm&style=flat-square&color=088)](https://npmjs.com/package/@ceicc/range)
+[![Module type](https://img.shields.io/badge/Module-ESM-informational?style=flat-square)](https://gist.github.com/sindresorhus/a39789f98801d908bbc7ff3ecc99d99c)
+
+## Installation
+```bash
 npm i @ceicc/range
 ```
 
-# Usage
-start by importing `http` and `range`
+## Usage
+
+add `range` to an existence express app
+
 ```js
-const
-http = require("http"),
-range = require("@ceicc/range");
+import { range } from "@ceicc/range"
+
+app.get('/public/*', range())
+
+app.listen(3000)
 ```
 
-Then make a simple server that responds with a file based on the requested path
- ```js
- http.createServer((req, res) => {
+This will serve every request starts with `/public/` with `range`.
 
-  range(__dirname + req.url, res).catch(console.error)
+The base directory will be `.` or the current working directory, unless specified in the `options` object.
 
-}).listen(2000);
- ```
- 
- # Parameters
- 1. file path.
- 2. the response object.
- 3. optional object
+## Options Object
 
- # Options Object
- 1. `maxAge` max age of caching in seconds - default 0
- 
- 2. `etag` add Etag header - default true
- 
- 3. `lastModified` add last-modified header - default true
- 
- 4. `conditional` whether to respect conditional requests or not - default false  
-   if true, the headers object is required.
- 
- 5. `range` accept range request - default false  
-   if true, the headers object is required.
- 
- 6. `headers` the request headers object `req.headers`  
-   if `range` and/or `conditionalRequest` are true, then the headers object is required.  
-   you can pass the whole headers object, or only the conditional and range headers.
+#### `maxAge`
 
- 7. `notFound` handler for non existing files  
-   `notFound: false` - a rejection will be thrown (default).  
-   `notFound: true` - empty body with response code '404' will be sent.  
-   `notFound: <string>` - send a file with response code '404', the given string is the path to file.  
-      if the path doesn't led to a file, a rejection will be thrown.
-  
-  8. `implicitIndex` Check for index files if the request path is a directory. default: `false`  
-    Pass an array of extensions to check against. e.g. _`["html", "css"]`_  
-    Or simply pass `true` to check for html extension only.
+  - default: `10800`
+  - type: `number`
 
- # Resolves
- the response status code
- 
- # Rejects
- 'File Not Found' error.
- 
- Any other unexpected error
- 
- # Real World Example
- ```js
-const
-express = require("express"),
-range = require("@ceicc/range"),
-app = express();
+  caching period in seconds.
 
-app.get('/', (req, res, next) => range('./public/index.html', res).catch(next));
+#### `etag`
 
-app.get('/public/*', (req, res, next) => {
-  range('.' + req.path, res, {
-    headers: req.headers,
-    range: true,
-    conditional: true,
-    maxAge: 2592000, // 30 Days
-    notFound: './test/public/404.html',
-  }).catch(next);
-});
+  - default: `true`
+  - type: `boolean`
 
-app.use((err, req, res, next) => {
-  console.dir(err);
-  if (!res.headersSent)
-    res.sendStatus(500);
-});
+  add Etag header.
 
-app.listen(2000);
- ```
+#### `lastModified`
+
+  - default: `true`
+  - type: `boolean`
+
+  add last-modified header.
+
+#### `conditional`
+
+  - default: `true`
+  - type: `boolean`
+
+  whether to respect conditional requests or not.
+
+#### `range`
+
+  - default: `true`
+  - type: `boolean`
+
+  accept range request.
+
+#### `notFound`
+
+  - default: `true`
+  - type: `boolean|string`
+
+  a handler for non existing files
+
+  `notFound: false` `next` will be called.
+
+  `notFound: true` empty body with status code '404' will be sent.
+
+  `notFound: <string>` send a file with status code '404', the given string is the path to file.
+
+  if the path doesn't led to a file, `next` will be called.
+
+  ***Note:*** The path is relative to the `baseDir` path.
+
+#### `implicitIndex`
+
+  - default: `true`
+  - type: `boolean|Array<string>`
+
+  Check for index files if the request path is a directory.
+
+  Pass an array of extensions to check against. e.g. _`["html", "css"]`_
+
+  Or simply pass `true` to check for html extension only.
+
+#### `baseDir`
+
+  - default: `'.'`
+  - type: `string`
+
+  the base dirctory.
+
+#### `hushErrors`
+
+  - default: `false`
+  - type: `boolean`
+
+  Whether to ignore errors and reply with status code `500`, or pass the error to `next` function.
+
+#### `trailingSlash`
+
+  - default: `true`
+  - type: `boolean`
+
+  Redirect directory requests to add trailing slash.
+
+  disabling this option will led to relative path issues. [see #9](https://github.com/Ceicc/range/issues/9)
+
+  `implicitIndex` must be `true`
+
+#### `compression`
+
+  - default: `false`
+  - type: `false|Array<string>`
+
+  Compress the response body with one of the compression algorithm given in the array.
+
+  availabel compression methods are:
+  1. `"br"`
+  1. `"gzip"`
+  1. `"deflate"`
+
+  the compression method will be determined based on the request's [`accept-encoding`](https://developers.mozilla.org/en-US/docs/Web/HTTP/Headers/accept-encoding) header using npm package [`negotiator`](https://npmjs.com/package/negotiator).
+
+#### `dateHeader`
+
+  - default: `true`
+  - type: `boolean`
+
+  send `date` response header, `new Date().toUTCString()` function will be used to get the current date.
+
+  [learn more](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Date) about the `date` header
+
+
+## Real World Example
+
+```js
+import { fileURLToPath } from "node:url"
+import { join, dirname } from "node:path"
+import express from "express"
+import { range } from "@ceicc/range"
+
+const app = express()
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+
+app.get('*', range({ baseDir: join(__dirname, "public") }))
+
+app.use((error, req, res, next) => {
+  console.error(error)
+  res.sendStatus(500)
+})
+
+app.listen(3000, () => console.log("server listening on http://localhost:3000"))
+```
