@@ -127,7 +127,7 @@ The base directory will be `.` or the current working directory, unless specifie
   1. `"gzip"`
   1. `"deflate"`
 
-  the compression method will be determined based on the request's [`accept-encoding`](https://developers.mozilla.org/en-US/docs/Web/HTTP/Headers/accept-encoding) header using npm package [`negotiator`](https://npmjs.com/package/negotiator).
+  the compression method will be determined based on the request's [`accept-encoding`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/accept-encoding) header using npm package [`negotiator`](https://npmjs.com/package/negotiator).
 
 #### `dateHeader`
 
