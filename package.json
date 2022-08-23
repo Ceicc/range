@@ -30,12 +30,10 @@
   "homepage": "https://github.com/ceicc/range#readme",
   "files": [
     "lib/",
-    "types/",
     "README.md",
     "LICENSE",
     "package.json"
   ],
-  "types": "types/",
   "engines": {
     "node": ">=14.16"
   },
