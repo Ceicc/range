@@ -1,6 +1,6 @@
 {
   "name": "@ceicc/range",
-  "version": "3.0.0",
+  "version": "3.0.0-no-types-dir",
   "description": "http range request handler",
   "exports": "./lib/index.js",
   "type": "module",
