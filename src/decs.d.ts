@@ -1,1 +1,0 @@
-declare module '@ceicc/options-checker'

@@ -1,6 +1,6 @@
 {
   "name": "@ceicc/range",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "description": "http range request handler",
   "exports": "./lib/index.js",
   "type": "module",
@@ -38,7 +38,6 @@
     "node": ">=14.16"
   },
   "dependencies": {
-    "@ceicc/options-checker": "^1.0.2",
     "compressible": "^2.0.18",
     "mime-types": "^2.1.35",
     "negotiator": "^0.6.3"

@@ -5,7 +5,6 @@ import { URL } from "node:url"
 import { extname } from "node:path"
 
 import { contentType } from "mime-types"
-import optionsChecker from "@ceicc/options-checker"
 
 import * as utils from "./utils.js"
 
@@ -37,22 +36,20 @@ type options = {
   dateHeader?: boolean,
 }
 
-function range(options: options = {}) {
-
-  optionsChecker(options, {
-    baseDir:        { default: '.',   type: "string"  },
-    hushErrors:     { default: false, type: "boolean" },
-    conditional:    { default: true,  type: "boolean" },
-    range:          { default: true,  type: "boolean" },
-    etag:           { default: true,  type: "boolean" },
-    lastModified:   { default: true,  type: "boolean" },
-    maxAge:         { default: 10800, type: "number|boolean" },
-    notFound:       { default: true,  type: "boolean|string" },
-    implicitIndex:  { default: true,  type: "boolean|array"  },
-    trailingSlash:  { default: true,  type: "boolean" },
-    compression:    { default: false, type: "boolean|array"  },
-    dateHeader:     { default: true,  type: "boolean" },
-  })
+function range({
+    baseDir       = '.',
+    hushErrors    = false,
+    conditional   = true,
+    range         = true,
+    etag          = true,
+    lastModified  = true,
+    maxAge        = 10800,
+    notFound      = true,
+    implicitIndex = true,
+    trailingSlash = true,
+    compression   = false,
+    dateHeader    = true,
+  }: options = {}) {
 
 
   return async function rangeMiddleware(req: IncomingMessage, res: ServerResponse, next: NextFunction): Promise<void> {
@@ -63,37 +60,37 @@ function range(options: options = {}) {
     try {
 
       // Using `var` to get function scope
-      var stat = await promises.stat(options.baseDir + pathname)
+      var stat = await promises.stat(baseDir + pathname)
 
     } catch (error: any) {
 
       if (error?.code === "ENOENT") {
 
-        if (options.notFound === true)
+        if (notFound === true)
           return utils.forgetAboutIt(res, 404)
 
-        if (typeof options.notFound === "string") {
+        if (typeof notFound === "string") {
 
-          req.url = `/${options.notFound}`
+          req.url = `/${notFound}`
 
-          options.notFound = false
+          notFound = false
 
           return rangeMiddleware(req, res, next)
         }
 
-        return options.hushErrors ? utils.forgetAboutIt(res, 404) : next(error)
+        return hushErrors ? utils.forgetAboutIt(res, 404) : next(error)
       }
 
-      return options.hushErrors ? utils.forgetAboutIt(res, 500) : next(error)
+      return hushErrors ? utils.forgetAboutIt(res, 500) : next(error)
     }
 
 
     if (stat.isDirectory()) {
 
-      if (!options.implicitIndex)
+      if (!implicitIndex)
         return utils.forgetAboutIt(res, 404)
 
-      if (options.trailingSlash && !utils.hasTrailingSlash(pathname)) {
+      if (trailingSlash && !utils.hasTrailingSlash(pathname)) {
         res.statusCode = 301
         res.setHeader("Location", pathname + "/")
         res.end()
@@ -102,13 +99,13 @@ function range(options: options = {}) {
 
       const extensions = new Set()
 
-      if (Array.isArray(options.implicitIndex))
-        options.implicitIndex.forEach(v => extensions.add(v))
+      if (Array.isArray(implicitIndex))
+        implicitIndex.forEach(v => extensions.add(v))
 
-      else if (options.implicitIndex === true)
+      else if (implicitIndex === true)
         extensions.add("html")
 
-      const directory = await promises.readdir(options.baseDir + pathname)
+      const directory = await promises.readdir(baseDir + pathname)
 
       for (const extension of extensions) {
         if (!directory.includes(`index.${extension}`))
@@ -123,46 +120,46 @@ function range(options: options = {}) {
     }
 
 
-    const etag = options.etag && utils.getEtag(stat.mtime, stat.size)
+    const etagVal = etag && utils.getEtag(stat.mtime, stat.size)
     const extension = extname(pathname)
     const fileContentType = contentType(extension)
 
-    etag                  && res.setHeader("etag", etag)
-    options.lastModified  && res.setHeader("last-modified", stat.mtime.toUTCString())
-    options.range         && res.setHeader("accept-ranges", "bytes") // Hint to the browser range is supported
-    typeof options.maxAge === "number" && res.setHeader("cache-control", `max-age=${options.maxAge}`)
+    etagVal                  && res.setHeader("etag", etagVal)
+    lastModified  && res.setHeader("last-modified", stat.mtime.toUTCString())
+    range         && res.setHeader("accept-ranges", "bytes") // Hint to the browser range is supported
+    typeof maxAge === "number" && res.setHeader("cache-control", `max-age=${maxAge}`)
     typeof fileContentType === "string" && res.setHeader("content-type", fileContentType)
     res.setHeader("content-length", stat.size)
-    options.dateHeader    && res.setHeader("date", new Date().toUTCString())
+    dateHeader    && res.setHeader("date", new Date().toUTCString())
 
     // check conditional requests
-    if ( options.conditional) {
+    if ( conditional) {
 
       const ifNoneMatch = req.headers["if-none-match"]
 
       const ifModifiedSince = req.headers["if-modified-since"]
 
       if (
-        ifNoneMatch === etag ||
+        ifNoneMatch === etagVal ||
         ifModifiedSince && ( Date.parse(ifModifiedSince) - stat.mtime.getTime() ) >= -2000
       )
         return utils.forgetAboutIt(res, 304)
 
     }
 
-    if (options.range && req.headers["range"]) {
+    if (range && req.headers["range"]) {
 
-      if (req.headers["if-range"] && req.headers["if-range"] !== etag) {
+      if (req.headers["if-range"] && req.headers["if-range"] !== etagVal) {
 
         res.statusCode = 200
 
         try {
 
-          if (options.compression && fileContentType && stat.size > 1024) {
+          if (compression && fileContentType && stat.size > 1024) {
 
             const { encoding, stream } = utils.getPossibleEncoding({
               headers: req.headers,
-              availableEncodings: options.compression,
+              availableEncodings: compression,
               contentType: fileContentType
             })
 
@@ -170,15 +167,15 @@ function range(options: options = {}) {
               res.removeHeader("content-length")
               res.setHeader("content-encoding", encoding)
 
-              return await streamIt({ path: options.baseDir + pathname, res, transformStream: stream })
+              return await streamIt({ path: baseDir + pathname, res, transformStream: stream })
             }
           }
 
-          return await streamIt({ path: options.baseDir + pathname, res })
+          return await streamIt({ path: baseDir + pathname, res })
 
         } catch (error) {
 
-          options.hushErrors ? utils.hush(res) : next(error)
+          hushErrors ? utils.hush(res) : next(error)
 
         }
 
@@ -191,7 +188,7 @@ function range(options: options = {}) {
         const ifUnmodifiedSince = req.headers["if-unmodified-since"]
 
         if (
-          ifMatch && ifMatch !== etag ||
+          ifMatch && ifMatch !== etagVal ||
           ifUnmodifiedSince && ( Date.parse(ifUnmodifiedSince) - stat.mtime.getTime() ) < -2000
         )
           return utils.forgetAboutIt(res, 412)
@@ -199,11 +196,11 @@ function range(options: options = {}) {
 
       try {
 
-        await rangeRequest(options.baseDir + pathname, res, req.headers["range"], stat.size)
+        await rangeRequest(baseDir + pathname, res, req.headers["range"], stat.size)
 
       } catch (error) {
 
-        options.hushErrors ? utils.hush(res) : next(error)
+        hushErrors ? utils.hush(res) : next(error)
 
       }
 
@@ -214,11 +211,11 @@ function range(options: options = {}) {
 
     try {
 
-      if (options.compression && fileContentType && stat.size > 1024) {
+      if (compression && fileContentType && stat.size > 1024) {
 
         const { encoding, stream } = utils.getPossibleEncoding({
           headers: req.headers,
-          availableEncodings: options.compression,
+          availableEncodings: compression,
           contentType: fileContentType || ""
         })
 
@@ -226,15 +223,15 @@ function range(options: options = {}) {
           res.removeHeader("content-length")
           res.setHeader("content-encoding", encoding)
 
-          return await streamIt({ path: options.baseDir + pathname, res, transformStream: stream })
+          return await streamIt({ path: baseDir + pathname, res, transformStream: stream })
         }
       }
 
-      return await streamIt({ path: options.baseDir + pathname, res })
+      return await streamIt({ path: baseDir + pathname, res })
 
     } catch (error) {
 
-      options.hushErrors ? utils.hush(res) : next(error)
+      hushErrors ? utils.hush(res) : next(error)
 
     }
 
